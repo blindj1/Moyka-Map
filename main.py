@@ -1,23 +1,35 @@
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command
-from aiogram.types.web_app_info import WebAppInfo
+import dash
+from dash import html
+import dash_leaflet as dl
+import pandas as pd
 
-BOT_TOKEN = '7649004045:AAFm316zw82zPpu4ZYuuWRQ6tDIB3niAuYo'
+file2arr = [k.rstrip().split(';') for k in open("coord.txt").readlines()]
+boobs = dict(
+    iconUrl='./assets/female.png',
+    iconSize=[50, 50],
+    iconAnchor=[15, 15],
+    popupAnchor=[0, -15],
+)
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+data = {
+    'label': [k[0] for k in file2arr],
+    'lat': [k[1] for k in file2arr],
+    'lon': [k[2] for k in file2arr],
+}
+
+df = pd.DataFrame(data)
 
 
-@dp.message(Command(commands=['start']))
-async def start(message: Message):
+app = dash.Dash(__name__)
 
-    markup = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Open App', web_app=WebAppInfo(url='http://localhost:63342/moyka/index.html?_ijt=gvkm1loul32n3v71u7pjqbi52l&_ij_reload=RELOAD_ON_SAVE'))]],
-                                 resize_keyboard=True
-                                 )
+markers = [dl.Marker(icon=boobs, position=[row['lat'], row['lon']], children=dl.Tooltip(row['label'])) for index, row in df.iterrows()]
 
-    await message.answer(text="Hey", reply_markup=markup)
+app.layout = html.Div([dl.Map(center=[55.751244, 37.618423],
+                              zoom=4,
+                              children=[dl.TileLayer(),  *markers],
+                              style={'width' : '100%', 'height' : '50vh', 'margin' : 'auto', 'display' : 'block'})])
 
 
 if __name__ == '__main__':
-    dp.run_polling(bot)
+    app.run_server(debug=True, port=5001, host='0.0.0.0')
+
